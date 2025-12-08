@@ -1,6 +1,5 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from dotenv import load_dotenv
-from schemas import KakaoRequest
 from ai_service import analyze_sentence
 
 load_dotenv()
@@ -11,9 +10,19 @@ def health_check():
     return {"status": "ok"}
 
 @app.post("/bot")
-async def bot(req: KakaoRequest):
-    # userRequest 유효성 검사
-    if not req.userRequest or not req.userRequest.get("utterance"):
+async def bot(request: Request):
+
+    # JSON 안전하게 파싱
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    user_request = body.get("userRequest", {})
+    utterance = user_request.get("utterance", "")
+
+    # 유효성 검사
+    if not utterance:
         return {
             "version": "2.0",
             "template": {
@@ -23,8 +32,7 @@ async def bot(req: KakaoRequest):
             }
         }
 
-    utterance = req.userRequest["utterance"]
-
+    # AI 분석
     answer = await analyze_sentence(utterance)
 
     return {
